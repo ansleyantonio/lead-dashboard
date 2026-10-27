@@ -256,12 +256,12 @@ function LoginPage({ onLogin }: { onLogin: (session: DemoSession) => void }) {
     <section className="auth-frame" aria-labelledby="login-title">
       <aside className="auth-visual">
         <div className="auth-brand"><div className="brand-mark">L</div><div><strong>Lead Operations</strong><span>Advisor workspace</span></div></div>
-        <div className="auth-visual-copy"><span className="auth-kicker">Advisor operations / 01</span><h1>Move every enquiry <em>forward.</em></h1><p>One focused workspace for the leads that need a decision, a call, or a clear next step.</p></div>
-        <div className="auth-live-card"><div className="auth-live-heading"><span><i /> Qualification engine</span><strong>Live</strong></div><div className="auth-live-line"><span>Automated call queue</span><b>07 leads</b></div><div className="auth-live-track"><span /></div><div className="auth-live-footer"><span>Next run</span><strong>09:57 · London</strong><span className="auth-live-up"><ArrowUp size={12} /> 6.8%</span></div></div>
-        <div className="auth-visual-footer"><span><ShieldCheck size={15} /> Scoped to Aggregator — UK</span><span>27 active leads</span></div>
+        <div className="auth-visual-copy"><span className="auth-kicker">Advisor operations</span><h1>Move every enquiry <em>forward.</em></h1><p>One focused workspace for the leads that need a decision, a call, or a clear next step.</p></div>
+        <div className="auth-principles"><div><CheckCircle size={16} /><span><strong>Qualify with context</strong><small>Keep source, consent, and history together.</small></span></div><div><CheckCircle size={16} /><span><strong>Make the next move obvious</strong><small>Give every active lead a clear action.</small></span></div><div><CheckCircle size={16} /><span><strong>Carry ownership forward</strong><small>Protect the handoff from lead to application.</small></span></div></div>
+        <div className="auth-visual-footer"><span><ShieldCheck size={15} /> Secure advisor workspace</span><span>Qualify · Assign · Convert</span></div>
       </aside>
       <section className="auth-panel">
-        <div className="auth-panel-top"><span>Sign in</span><span className="auth-panel-workspace">Aggregator — UK <CaretDown size={13} /></span></div>
+        <div className="auth-panel-top"><span>Sign in</span><span className="auth-panel-workspace"><ShieldCheck size={13} /> Secure workspace access</span></div>
         <div className="auth-copy"><span className="eyebrow">Good to see you</span><h2 id="login-title">Welcome back.</h2><p>Sign in to work leads, follow up with prospects, and keep every qualification decision in one place.</p></div>
         <form className="auth-form" onSubmit={submit}>
           <label>Email address<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="you@leadops.demo" required /></label>
@@ -269,8 +269,7 @@ function LoginPage({ onLogin }: { onLogin: (session: DemoSession) => void }) {
           {error && <div className="auth-error" role="alert"><WarningCircle size={16} />{error}</div>}
           <button className="button button-primary auth-submit" type="submit">Enter workspace <ArrowUpRight size={16} /></button>
         </form>
-        <div className="auth-demo"><div><span className="section-overline">Demo access</span><strong>Try the manager workspace</strong><p>maya@leadops.demo <span>·</span> demo1234</p></div><button className="button button-secondary small" type="button" onClick={() => { setEmail("maya@leadops.demo"); setPassword("demo1234"); setError(""); }}>Use demo account</button></div>
-        <p className="auth-footnote"><ShieldCheck size={14} /> Demo data stays in this browser and is not connected to a production account.</p>
+        <p className="auth-support-line"><ShieldCheck size={14} /> Use your workspace credentials. Contact your workspace administrator if you need access.</p>
       </section>
     </section>
   </main>;
