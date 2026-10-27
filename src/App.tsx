@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowDown,
@@ -30,6 +30,7 @@ import {
   SquaresFour,
   Target,
   TrendUp,
+  UploadSimple,
   UserCircle,
   UserPlus,
   UsersThree,
@@ -209,6 +210,7 @@ const navItems = [
   { label: "Follow-ups", icon: CheckSquareOffset, count: 12 },
   { label: "Team workload", icon: UsersThree },
   { label: "Reports", icon: TrendUp },
+  { label: "Projects", icon: NotePencil },
 ];
 
 const pipeline = [
@@ -291,6 +293,7 @@ function App() {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <aside className="sidebar">
         <div className="brand-lockup">
           <div className="brand-mark">L</div>
@@ -335,12 +338,16 @@ function App() {
 
         <div className="nav-group nav-group-secondary">
           <span className="nav-label">Operations</span>
-          <button className="nav-item" onClick={() => showNotice("Sources are syncing normally.")}>
+          <button className={`nav-item ${activeNav === "Source health" ? "active" : ""}`} onClick={() => setActiveNav("Source health")}>
             <Lightning size={18} />
             <span>Source health</span>
             <span className="status-dot" />
           </button>
-          <button className="nav-item" onClick={() => showNotice("Audit log opened in a new view.")}>
+          <button className={`nav-item ${activeNav === "Import leads" ? "active" : ""}`} onClick={() => setActiveNav("Import leads")}>
+            <UploadSimple size={18} />
+            <span>Import leads</span>
+          </button>
+          <button className={`nav-item ${activeNav === "Audit log" ? "active" : ""}`} onClick={() => setActiveNav("Audit log")}>
             <ShieldCheck size={18} />
             <span>Audit log</span>
           </button>
@@ -366,7 +373,7 @@ function App() {
         </div>
       </aside>
 
-      <main className="main-content">
+      <main id="main-content" className="main-content">
         <header className="topbar">
           <div className="mobile-brand"><div className="brand-mark">L</div><strong>Lead Operations</strong></div>
           <div className="breadcrumb"><span>Operations</span><CaretRight size={13} /><strong>{activeNav}</strong></div>
@@ -385,6 +392,7 @@ function App() {
         </header>
 
         <div className="content-wrap">
+        {activeNav === "Overview" ? <>
           <section className="page-intro">
             <div>
               <div className="date-line"><CalendarDots size={16} /> Tuesday, 27 October 2026 <span className="date-separator" /> <span>London · 09:42</span></div>
@@ -503,6 +511,22 @@ function App() {
               <ActivityItem icon={FileText} tone="ink" title="Ari Bennett uploaded a passport scan" meta="Document received · 1h ago" />
             </div>
           </section>
+        </> : <WorkspaceView
+          activeNav={activeNav}
+          leads={leads}
+          filteredLeads={filteredLeads}
+          query={query}
+          setQuery={setQuery}
+          activeStatus={activeStatus}
+          setActiveStatus={setActiveStatus}
+          selectedRows={selectedRows}
+          toggleAll={toggleAll}
+          toggleRow={toggleRow}
+          setSelectedLeadId={(id) => setSelectedLeadId(id)}
+          onClaim={claimLead}
+          showNotice={showNotice}
+          setActiveNav={setActiveNav}
+        />}
         </div>
       </main>
 
@@ -518,7 +542,7 @@ function App() {
         </motion.aside>}
       </AnimatePresence>
 
-      <AnimatePresence>{notice && <motion.div className="toast" initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 16, opacity: 0 }}><CheckCircle size={18} weight="fill" /><span>{notice}</span></motion.div>}</AnimatePresence>
+      <AnimatePresence>{notice && <motion.div className="toast" role="status" aria-live="polite" initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 16, opacity: 0 }}><CheckCircle size={18} weight="fill" /><span>{notice}</span></motion.div>}</AnimatePresence>
     </div>
   );
 }
@@ -538,6 +562,317 @@ function LeadRow({ lead, index, selected, checked, onSelect, onToggle, onClaim }
     <td><span className="last-activity">{lead.lastActivity}</span></td>
     <td><button className="icon-button row-more" onClick={(event) => event.stopPropagation()}><DotsThree size={18} /></button></td>
   </motion.tr>;
+}
+
+type WorkspaceViewProps = {
+  activeNav: string;
+  leads: Lead[];
+  filteredLeads: Lead[];
+  query: string;
+  setQuery: (value: string) => void;
+  activeStatus: LeadStatus | "All";
+  setActiveStatus: (value: LeadStatus | "All") => void;
+  selectedRows: string[];
+  toggleAll: () => void;
+  toggleRow: (id: string) => void;
+  setSelectedLeadId: (id: string) => void;
+  onClaim: (lead: Lead) => void;
+  showNotice: (message: string) => void;
+  setActiveNav: (value: string) => void;
+};
+
+function WorkspaceView(props: WorkspaceViewProps) {
+  switch (props.activeNav) {
+    case "Lead inbox":
+      return <LeadInboxView {...props} />;
+    case "Follow-ups":
+      return <FollowUpsView {...props} />;
+    case "Team workload":
+      return <TeamWorkloadView {...props} />;
+    case "Reports":
+      return <ReportsView {...props} />;
+    case "Projects":
+      return <ProjectsView showNotice={props.showNotice} setActiveNav={props.setActiveNav} />;
+    case "Import leads":
+      return <ImportLeadsView {...props} />;
+    case "Source health":
+      return <SourceHealthView showNotice={props.showNotice} setActiveNav={props.setActiveNav} />;
+    case "Audit log":
+      return <AuditLogView showNotice={props.showNotice} />;
+    default:
+      return <LeadInboxView {...props} />;
+  }
+}
+
+function WorkspaceIntro({ eyebrow, title, description, action, onAction }: { eyebrow: string; title: string; description: string; action: string; onAction: () => void }) {
+  return <section className="workspace-intro page-intro">
+    <div>
+      <div className="date-line"><CalendarDots size={16} /> Tuesday, 27 October 2026 <span className="date-separator" /> <span>London · 09:42</span></div>
+      <div className="section-overline workspace-eyebrow">{eyebrow}</div>
+      <h1>{title}<span className="heading-period">.</span></h1>
+      <p>{description}</p>
+    </div>
+    <div className="intro-actions"><button className="button button-primary" onClick={onAction}><Plus size={17} weight="bold" /> {action}</button></div>
+  </section>;
+}
+
+function MiniMetric({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: string }) {
+  return <div className="mini-metric"><span className={`mini-metric-mark ${tone}`} /><div><span>{label}</span><strong>{value}</strong><small>{detail}</small></div></div>;
+}
+
+function LeadInboxView({ filteredLeads, leads, query, setQuery, activeStatus, setActiveStatus, selectedRows, toggleAll, toggleRow, setSelectedLeadId, onClaim, showNotice }: WorkspaceViewProps) {
+  const unassigned = leads.filter((lead) => lead.owner === "Unassigned").length;
+  const overdue = leads.filter((lead) => lead.sla === "Overdue").length;
+  const ready = leads.filter((lead) => lead.flags.includes("Ready to convert")).length;
+
+  return <>
+    <WorkspaceIntro eyebrow="Advisor workspace / inbox" title="Lead inbox" description="Search every permitted enquiry, see the urgency first, and move the next lead forward without losing its history." action="Capture new lead" onAction={() => showNotice("New lead capture flow opened.")} />
+
+    <section className="mini-metrics" aria-label="Inbox summary">
+      <MiniMetric label="Unassigned" value={`0${unassigned}`} detail="Needs an owner" tone="gold" />
+      <MiniMetric label="Due today" value="12" detail="4 are overdue" tone="clay" />
+      <MiniMetric label="Ready to convert" value={`0${ready}`} detail="Minimum checks pass" tone="sage" />
+      <MiniMetric label="SLA at risk" value={`0${overdue + 1}`} detail="Review within 2 hours" tone="ink" />
+    </section>
+
+    <section className="inbox-panel section-block">
+      <div className="inbox-heading section-header">
+        <div><div className="section-overline"><span className="live-line" /> Unified lead queue</div><h2>{filteredLeads.length} leads in this view</h2></div>
+        <div className="inbox-heading-actions"><button className="button button-secondary" onClick={() => showNotice("Saved view options opened.")}><SlidersHorizontal size={15} /> Configure view</button><button className="text-button" onClick={() => showNotice("CSV export prepared for this scoped view.")}><DownloadSimple size={15} /> Export CSV</button></div>
+      </div>
+      <div className="inbox-filters">
+        <label className="inbox-search"><MagnifyingGlass size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, email, lead ID or campaign" /></label>
+        <label className="filter-select-label">Status<select value={activeStatus} onChange={(event) => setActiveStatus(event.target.value as LeadStatus | "All")}><option value="All">All statuses</option>{statusOptions.slice(1).map((status) => <option key={status}>{status}</option>)}</select></label>
+        <label className="filter-select-label">Owner<select defaultValue="Everyone"><option>Everyone</option><option>My leads</option><option>Unassigned</option></select></label>
+        <button className="filter-button" onClick={() => showNotice("Advanced filters are ready to configure.")}><Funnel size={15} /> More filters <span>6</span></button>
+      </div>
+      <div className="queue-toolbar inbox-toolbar">
+        <div className="queue-tabs">{(["All", "New", "Assigned", "Contacted", "Converted"] as const).map((status) => <button key={status} className={activeStatus === status ? "active" : ""} onClick={() => setActiveStatus(status)}>{status === "All" ? "All leads" : status}<span>{status === "All" ? leads.length : leads.filter((lead) => lead.status === status).length}</span></button>)}</div>
+        <div className="selected-summary">{selectedRows.length > 0 && <><span>{selectedRows.length} selected</span><button onClick={() => showNotice("Bulk assignment flow opened.")}>Assign</button><button onClick={() => showNotice("Bulk follow-up flow opened.")}>Follow up</button><button onClick={() => showNotice("Selection cleared.")}>Clear</button></>}</div>
+      </div>
+      <div className="queue-table-wrap">
+        <table className="queue-table inbox-table"><thead><tr><th className="check-cell"><button className={`checkbox ${selectedRows.length === filteredLeads.length && filteredLeads.length ? "checked" : ""}`} onClick={toggleAll}>{selectedRows.length === filteredLeads.length && filteredLeads.length ? <Check size={13} weight="bold" /> : null}</button></th><th>Prospect</th><th>Priority / SLA</th><th>Status</th><th>Owner</th><th>Interest</th><th>Next action</th><th /></tr></thead>
+          <tbody>{filteredLeads.map((lead, index) => <LeadRow key={lead.id} lead={lead} index={index} selected={false} checked={selectedRows.includes(lead.id)} onSelect={() => setSelectedLeadId(lead.id)} onToggle={() => toggleRow(lead.id)} onClaim={() => onClaim(lead)} />)}{filteredLeads.length === 0 && <tr><td colSpan={8}><div className="empty-state"><MagnifyingGlass size={24} /><strong>No leads match this view</strong><span>Try another status or search term.</span><button className="text-button" onClick={() => { setQuery(""); setActiveStatus("All"); }}>Clear filters</button></div></td></tr>}</tbody>
+        </table>
+      </div>
+      <div className="table-footer"><span>Showing <strong>{filteredLeads.length}</strong> of {leads.length} permitted leads</span><span className="privacy-note"><ShieldCheck size={13} /> Aggregator scope applied</span></div>
+    </section>
+  </>;
+}
+
+function FollowUpsView({ showNotice, setActiveNav }: WorkspaceViewProps) {
+  const tasks = [
+    { lead: "Saskia Vermeer", id: "LD-4821", action: "Make first contact", due: "Due in 42 min", owner: "Unassigned", tone: "clay", type: "First contact", status: "New" as LeadStatus },
+    { lead: "Malik Okafor", id: "LD-4817", action: "Send course shortlist", due: "Due today · 14:00", owner: "Maya Chen", tone: "gold", type: "Follow-up", status: "Assigned" as LeadStatus },
+    { lead: "Theo Mbatha", id: "LD-4794", action: "Reconnect after no response", due: "Overdue by 1 day", owner: "Jules Martin", tone: "clay", type: "Overdue", status: "Assigned" as LeadStatus },
+    { lead: "Elena Rossi", id: "LD-4809", action: "Share business course options", due: "Due today · 16:30", owner: "Maya Chen", tone: "sage", type: "Qualification", status: "Contacted" as LeadStatus },
+    { lead: "Nadia Al-Khatib", id: "LD-4788", action: "Review conversion readiness", due: "Tomorrow · 09:00", owner: "Ravi Shah", tone: "sage", type: "Convert", status: "Contacted" as LeadStatus },
+  ];
+  return <>
+    <WorkspaceIntro eyebrow="Advisor workspace / follow-ups" title="Follow-ups" description="Keep every promise visible. Due, overdue, and upcoming actions stay attached to the lead that needs them." action="Schedule follow-up" onAction={() => showNotice("Follow-up composer opened.")} />
+    <section className="mini-metrics"><MiniMetric label="Due today" value="12" detail="Across 5 active owners" tone="clay" /><MiniMetric label="Overdue" value="04" detail="Needs intervention" tone="clay" /><MiniMetric label="Upcoming" value="08" detail="Next 7 days" tone="gold" /><MiniMetric label="Completed this week" value="31" detail="85% on time" tone="sage" /></section>
+    <section className="followup-layout">
+      <div className="section-block followup-panel"><div className="section-header compact"><div><div className="section-overline"><span className="live-line" /> Action queue</div><h2>Today’s follow-ups</h2></div><button className="filter-button" onClick={() => showNotice("Follow-up filters opened.")}><Funnel size={15} /> Filter</button></div>
+        <div className="followup-list">{tasks.map((task) => <article className={`followup-row ${task.type === "Overdue" ? "is-overdue" : ""}`} key={task.id}><div className={`followup-mark ${task.tone}`}><CalendarDots size={16} /></div><div className="followup-copy"><div className="followup-meta"><span>{task.type}</span><span>·</span><span>{task.id}</span></div><strong>{task.action}</strong><p>{task.lead} · {task.owner}</p></div><div className="followup-due"><span>{task.due}</span><StatusBadge status={task.status} /></div><div className="followup-actions"><button className="button button-secondary small" onClick={() => showNotice(`${task.lead} marked as complete.`)}><Check size={14} /> Complete</button><button className="icon-button" aria-label={`More actions for ${task.lead}`} onClick={() => showNotice("Follow-up actions opened.")}><DotsThree size={18} /></button></div></article>)}</div>
+      </div>
+      <aside className="section-block followup-side panel-light"><div className="section-overline">Operating rule</div><h2>Every active lead has a next action.</h2><p>Follow-ups stay open until they are completed, rescheduled, or cancelled with a reason. Missed actions remain visible to the manager queue.</p><div className="followup-rule"><CheckCircle size={17} /><span><strong>85%</strong> completed on or before the due date</span></div><button className="text-button" onClick={() => setActiveNav("Lead inbox")}>Open all active leads <ArrowUpRight size={15} /></button></aside>
+    </section>
+  </>;
+}
+
+function TeamWorkloadView({ showNotice, setActiveNav }: WorkspaceViewProps) {
+  const totalActive = workload.reduce((sum, person) => sum + person.active, 0);
+  return <>
+    <WorkspaceIntro eyebrow="Manager view / capacity" title="Team workload" description="See who has room, where the SLA is under pressure, and which queues need a manager decision." action="Assign leads" onAction={() => setActiveNav("Lead inbox")} />
+    <section className="mini-metrics"><MiniMetric label="Active leads" value={`${totalActive}`} detail="Across 4 advisors" tone="ink" /><MiniMetric label="Team capacity" value="64%" detail="Healthy overall" tone="sage" /><MiniMetric label="Unassigned" value="07" detail="2 added since 09:00" tone="gold" /><MiniMetric label="Overdue work" value="04" detail="3 with one advisor" tone="clay" /></section>
+    <section className="team-layout">
+      <div className="section-block team-panel"><div className="section-header compact"><div><div className="section-overline">Advisor capacity</div><h2>Workload by owner</h2></div><button className="button button-secondary small" onClick={() => showNotice("Workload export prepared.")}><DownloadSimple size={14} /> Export</button></div><div className="team-table"><div className="team-table-head"><span>Advisor</span><span>Active</span><span>Due</span><span>Capacity</span><span /></div>{workload.map((person) => <div className="team-table-row" key={person.name}><div className="team-person"><div className={`avatar avatar-${person.tone}`}>{person.initials}</div><div><strong>{person.name} {person.role === "You" && <span className="you-tag">you</span>}</strong><span>{person.role} · London team</span></div></div><strong>{person.active}</strong><strong>{person.due}</strong><div className="team-capacity"><div className="load-meter"><span style={{ width: `${person.load}%` }} className={`load-${person.tone}`} /></div><span>{person.load}%</span></div><button className="icon-button" aria-label={`Open ${person.name} workload`} onClick={() => showNotice(`${person.name}'s workload opened.`)}><CaretRight size={16} /></button></div>)}</div></div>
+      <aside className="section-block panel-dark team-insight"><div className="panel-kicker light-kicker"><Lightning size={15} weight="fill" /> Manager signal</div><h2>Jules is closest to capacity.</h2><p>Four assigned leads are due today and one is already overdue. Reassigning the next unassigned lead to Inez keeps the team below the 85% pressure mark.</p><div className="capacity-callout"><span>Current load</span><strong>84%</strong><div className="sla-track"><span style={{ width: "84%" }} /></div></div><button className="button button-primary small" onClick={() => showNotice("Suggested reassignment review opened.")}>Review suggested assignment <ArrowUpRight size={14} /></button></aside>
+    </section>
+    <section className="section-block team-queue"><div className="section-header compact"><div><div className="section-overline">Exceptions</div><h2>Queues that need a decision</h2></div><button className="text-button" onClick={() => setActiveNav("Follow-ups")}>View overdue work <ArrowUpRight size={15} /></button></div><div className="exception-grid"><div><span>Unassigned over 1 hour</span><strong>03 leads</strong><small>Oldest is LD-4821 · 18 min</small></div><div><span>Stale over 24 hours</span><strong>02 leads</strong><small>Both assigned to the legal queue</small></div><div><span>Ready to convert</span><strong>09 leads</strong><small>4 owned by Maya Chen</small></div></div></section>
+  </>;
+}
+
+function ReportsView({ showNotice }: WorkspaceViewProps) {
+  const [range, setRange] = useState("This month");
+  const sourceMix = [{ label: "Referral", value: 38, width: "76%", tone: "sage" }, { label: "Paid social", value: 27, width: "54%", tone: "clay" }, { label: "Organic", value: 21, width: "42%", tone: "gold" }, { label: "Events", value: 14, width: "28%", tone: "ink" }];
+  return <>
+    <WorkspaceIntro eyebrow="Manager view / reporting" title="Reports" description="Understand response time, source quality, ownership, and conversion without losing the event history behind the numbers." action="Export report" onAction={() => showNotice("Scoped report export prepared.")} />
+    <div className="report-controls"><div className="segmented-control">{["This week", "This month", "Last month"].map((option) => <button className={range === option ? "selected" : ""} key={option} onClick={() => setRange(option)}>{option}</button>)}</div><button className="filter-button" onClick={() => showNotice("Report filters opened.")}><Funnel size={15} /> Filter by source</button><span className="report-scope"><ShieldCheck size={14} /> Aggregator — UK</span></div>
+    <section className="report-metrics"><div className="report-metric"><span>Median first response</span><strong>1h 18m</strong><small className="positive"><ArrowDown size={13} /> 30% vs baseline</small></div><div className="report-metric"><span>First-contact rate</span><strong>82.4%</strong><small className="positive"><ArrowUp size={13} /> 6.8% this week</small></div><div className="report-metric"><span>Lead-to-application</span><strong>21.4%</strong><small className="positive"><ArrowUp size={13} /> 3.1% this month</small></div><div className="report-metric"><span>Stale lead rate</span><strong>8.7%</strong><small className="positive"><ArrowDown size={13} /> 25% vs baseline</small></div></section>
+    <section className="report-grid"><div className="section-block report-panel"><div className="section-header compact"><div><div className="section-overline">Acquisition quality</div><h2>Source mix</h2></div><button className="text-button" onClick={() => showNotice("Source detail opened.")}>View source detail <ArrowUpRight size={15} /></button></div><div className="source-bars">{sourceMix.map((source) => <div className="source-bar-row" key={source.label}><div><span>{source.label}</span><strong>{source.value}%</strong></div><div className="source-bar"><span className={source.tone} style={{ width: source.width }} /></div><small>{source.label === "Referral" ? "Highest conversion" : source.label === "Paid social" ? "42 new leads" : ""}</small></div>)}</div></div><div className="section-block report-panel"><div className="section-header compact"><div><div className="section-overline">Lifecycle health</div><h2>Pipeline movement</h2></div><TrendUp size={18} className="report-trend" /></div><div className="report-funnel">{pipeline.map((stage, index) => <div className="report-funnel-row" key={stage.label}><span className={`pipeline-index ${stage.color}`}>0{index + 1}</span><div><strong>{stage.label}</strong><span>{stage.label === "New" ? "Capture and triage" : stage.label === "Assigned" ? "Owner set" : stage.label === "Contacted" ? "First action logged" : "Application created"}</span></div><b>{stage.count}</b><ArrowUpRight size={14} /></div>)}</div></div></section>
+    <section className="section-block report-table-panel"><div className="section-header compact"><div><div className="section-overline">Advisor performance</div><h2>Response and conversion</h2></div><span className="report-period">{range} · updated 09:42</span></div><div className="performance-table"><div className="performance-head"><span>Advisor</span><span>First contact</span><span>Follow-up on time</span><span>Converted</span></div>{workload.map((person, index) => <div className="performance-row" key={person.name}><div className="team-person"><div className={`avatar avatar-${person.tone}`}>{person.initials}</div><strong>{person.name}</strong></div><span className={index === 1 ? "warn" : "positive-text"}>{index === 1 ? "76%" : index === 2 ? "84%" : "89%"}</span><span className="positive-text">{index === 1 ? "78%" : "91%"}</span><strong>{[4, 3, 2, 1][index]}</strong></div>)}</div></section>
+  </>;
+}
+
+function ProjectsView({ showNotice, setActiveNav }: { showNotice: (message: string) => void; setActiveNav: (value: string) => void }) {
+  const [showCreate, setShowCreate] = useState(false);
+  const [projectName, setProjectName] = useState("");
+  const projects = [
+    { name: "September intake", status: "Active", leads: "42", owner: "Maya Chen", channels: "Automated call · WhatsApp · Email", next: "New leads qualify within 15 min", tone: "sage" },
+    { name: "Cape Town open day", status: "Draft", leads: "07", owner: "Jules Martin", channels: "Automated call · SMS · Advisor follow-up", next: "Starts when event file is imported", tone: "gold" },
+    { name: "Partner referral · Atlas", status: "Active", leads: "18", owner: "Ravi Shah", channels: "Email · WhatsApp · Advisor follow-up", next: "First response target: 2 hours", tone: "clay" },
+  ];
+  return <>
+    <WorkspaceIntro eyebrow="Workspace / qualification projects" title="Projects" description="Set the qualification goal, contact sequence, ownership, and timing before you import a lead list. Every imported lead belongs to a project." action="Create project" onAction={() => setShowCreate(true)} />
+    <section className="project-layout">
+      <div className="project-list-panel"><div className="section-header compact"><div><div className="section-overline"><NotePencil size={14} /> Operating programmes</div><h2>Qualification projects</h2></div><span className="project-count">3 configured</span></div>
+        {showCreate && <div className="project-create"><div className="section-overline">New project</div><div className="project-create-grid"><label><span>Project name</span><input autoFocus value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="e.g. January intake" /></label><label><span>Qualification goal</span><select defaultValue="Confirm study interest"><option>Confirm study interest</option><option>Verify course fit</option><option>Re-engage an old enquiry</option></select></label></div><div className="project-create-actions"><button className="button button-secondary small" onClick={() => setShowCreate(false)}>Cancel</button><button className="button button-primary small" onClick={() => { if (!projectName.trim()) { showNotice("Add a project name first."); return; } showNotice(`${projectName} project created.`); setShowCreate(false); setProjectName(""); }}>Create project</button></div></div>}
+        <div className="project-list">{projects.map((project) => <article className="project-card" key={project.name}><div className={`project-status ${project.tone}`}><span /></div><div className="project-card-main"><div className="project-card-top"><div><span className="eyebrow">{project.status} project</span><h3>{project.name}</h3></div><button className="icon-button" aria-label={`More options for ${project.name}`} onClick={() => showNotice("Project actions opened.")}><DotsThree size={19} /></button></div><div className="project-card-meta"><span><UsersThree size={13} /> {project.leads} active leads</span><span><UserCircle size={13} /> {project.owner}</span></div><div className="project-sequence"><span>Qualification sequence</span><strong>{project.channels}</strong><small>{project.next}</small></div><button className="text-button" onClick={() => setActiveNav("Import leads")}>Import leads into project <ArrowUpRight size={15} /></button></div></article>)}</div>
+      </div>
+      <aside className="project-next panel-dark"><div className="panel-kicker light-kicker"><Lightning size={15} weight="fill" /> Recommended setup</div><h2>Qualify interest before an advisor spends time.</h2><p>Start with an automated call, then use consent-aware fallbacks. Stop when the prospect answers, opts out, or needs an advisor.</p><div className="project-channel-stack"><div><Phone size={15} /><span><strong>Automated call</strong><small>First attempt · within 15 min</small></span><b>01</b></div><div><ChatCircleDots size={15} /><span><strong>WhatsApp or SMS</strong><small>After unanswered call</small></span><b>02</b></div><div><EnvelopeSimple size={15} /><span><strong>Email</strong><small>Send course context and reply link</small></span><b>03</b></div><div><UserCircle size={15} /><span><strong>Advisor follow-up</strong><small>Handoff when interest is confirmed</small></span><b>04</b></div></div><button className="button button-primary small" onClick={() => setActiveNav("Import leads")}>Import and qualify leads <ArrowUpRight size={14} /></button></aside>
+    </section>
+  </>;
+}
+
+function ImportLeadsView({ showNotice }: WorkspaceViewProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [dragActive, setDragActive] = useState(false);
+  const [sourceLabel, setSourceLabel] = useState("Manual Excel import");
+  const [defaultOwner, setDefaultOwner] = useState("Unassigned");
+  const [duplicatePolicy, setDuplicatePolicy] = useState("Flag for review");
+  const [consentPolicy, setConsentPolicy] = useState("Reject rows without consent");
+  const [project, setProject] = useState("September intake");
+  const [qualificationGoal, setQualificationGoal] = useState("Confirm study interest");
+  const [callTiming, setCallTiming] = useState("Start within 15 minutes");
+  const [channels, setChannels] = useState({ call: true, whatsapp: true, sms: false, email: true, advisor: true });
+  const channelOptions = [{ key: "call", label: "Automated call", detail: "AI agent asks if they are still interested", icon: Phone, tone: "clay", required: true }, { key: "whatsapp", label: "WhatsApp", detail: "Follow up when consent is present", icon: ChatCircleDots, tone: "sage", required: false }, { key: "sms", label: "SMS", detail: "Short reminder after no answer", icon: ChatCircleDots, tone: "gold", required: false }, { key: "email", label: "Email", detail: "Send course context and reply link", icon: EnvelopeSimple, tone: "ink", required: false }, { key: "advisor", label: "Advisor follow-up", detail: "Handoff when interest is confirmed", icon: UserCircle, tone: "plum", required: false }];
+
+  const acceptFile = (candidate?: File) => {
+    if (!candidate) return;
+    const lowerName = candidate.name.toLowerCase();
+    const supported = [".xlsx", ".xls", ".csv"].some((extension) => lowerName.endsWith(extension));
+    if (!supported) {
+      showNotice("Use an .xlsx, .xls, or .csv file.");
+      return;
+    }
+    if (candidate.size > 10 * 1024 * 1024) {
+      showNotice("The file must be smaller than 10 MB.");
+      return;
+    }
+    setFile(candidate);
+    setStep(2);
+    showNotice("File ready for column mapping.");
+  };
+
+  const resetImport = () => {
+    setFile(null);
+    setStep(1);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const downloadTemplate = () => {
+    const csv = "full_name,email,phone,source,campaign,captured_at,consent_general,consent_email,consent_sms,institution,course_interest,intake,study_mode,preferred_channel,owner,notes,external_id\nSaskia Vermeer,saskia@example.com,+31 6 1847 2239,Meta,September intake,2026-10-27T08:42:00Z,true,true,false,Westbridge University,BSc Computer Science,September 2027,Full-time,email,,Example row,EXT-1001";
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "lead-import-template.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+    showNotice("Import template downloaded.");
+  };
+
+  const hasValidDefaults = () => {
+    if (!sourceLabel.trim()) {
+      showNotice("Add an import label before continuing.");
+      return false;
+    }
+    if (!project.trim()) {
+      showNotice("Choose a project before continuing.");
+      return false;
+    }
+    if (!channels.call) {
+      showNotice("Keep the automated call enabled for qualification.");
+      return false;
+    }
+    if (Object.values(channels).filter(Boolean).length < 2) {
+      showNotice("Choose at least two contact options for the sequence.");
+      return false;
+    }
+    return true;
+  };
+
+  const fileSize = file ? `${Math.max(1, Math.round(file.size / 1024))} KB` : "—";
+  const selectedChannelLabels = channelOptions.filter((channel) => channels[channel.key as keyof typeof channels]).map((channel) => channel.label).join(" · ");
+  const introAction = file ? (step === 3 ? "Back to mapping" : "Review import") : "Choose Excel file";
+  const runIntroAction = () => {
+    if (!file) {
+      fileInputRef.current?.click();
+    } else if (!hasValidDefaults()) {
+      return;
+    } else if (step === 3) {
+      setStep(2);
+    } else {
+      setStep(3);
+    }
+  };
+
+  return <>
+    <WorkspaceIntro eyebrow="Operations / lead ingestion" title="Import leads" description="Bring approved enquiry data into the unified inbox with clear ownership, consent, and duplicate handling before any record is created." action={introAction} onAction={runIntroAction} />
+    <div className="import-stepper" aria-label="Import progress">{[{ number: 1, label: "Prepare file" }, { number: 2, label: "Map columns" }, { number: 3, label: "Review and import" }].map((item) => <div className={`import-step ${step >= item.number ? "complete" : ""} ${step === item.number ? "current" : ""}`} key={item.number}><span>{step > item.number ? <Check size={13} weight="bold" /> : item.number}</span><strong>{item.label}</strong></div>)}</div>
+    <section className="import-layout">
+      <div className="import-main-card">
+        {step === 1 && <>
+          <div className="import-card-heading"><div><div className="section-overline"><UploadSimple size={14} /> Source file</div><h2>Upload a lead list</h2><p>Use the template or an existing spreadsheet with one lead per row. We validate the file before creating anything.</p></div><span className="import-limit">10 MB max</span></div>
+          <label className={`import-dropzone ${dragActive ? "drag-active" : ""}`} onDragOver={(event) => { event.preventDefault(); setDragActive(true); }} onDragLeave={() => setDragActive(false)} onDrop={(event) => { event.preventDefault(); setDragActive(false); acceptFile(event.dataTransfer.files[0]); }}>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={(event) => acceptFile(event.target.files?.[0])} />
+            <span className="import-upload-icon"><UploadSimple size={23} /></span><strong>Drop your file here</strong><span>or choose an Excel workbook or CSV from your computer</span><small>Supported: .xlsx, .xls, .csv · One sheet · Up to 10 MB</small>
+          </label>
+          <div className="import-file-actions"><button className="button button-secondary" onClick={downloadTemplate}><DownloadSimple size={15} /> Download import template</button><span>Template includes headers, examples, and field definitions.</span></div>
+          <div className="import-options qualification-settings"><div className="section-overline"><Phone size={14} /> Qualification setup</div><div className="import-option-grid"><label><span>Project <b>Required</b></span><select value={project} onChange={(event) => setProject(event.target.value)}><option>September intake</option><option>Cape Town open day</option><option>Partner referral · Atlas</option></select></label><label><span>Qualification goal</span><select value={qualificationGoal} onChange={(event) => setQualificationGoal(event.target.value)}><option>Confirm study interest</option><option>Verify course fit</option><option>Re-engage an old enquiry</option></select></label><label><span>First call timing</span><select value={callTiming} onChange={(event) => setCallTiming(event.target.value)}><option>Start within 15 minutes</option><option>Start in the next business hour</option><option>Schedule for a specific time</option></select></label><label><span>Maximum call attempts</span><select defaultValue="2 attempts"><option>1 attempt</option><option>2 attempts</option><option>3 attempts</option></select></label></div><div className="channel-picker-heading"><span>Contact options <b>Choose at least two</b></span><small>Consent is checked per channel before outreach.</small></div><div className="channel-picker">{channelOptions.map((channel) => { const Icon = channel.icon; const enabled = channels[channel.key as keyof typeof channels]; return <label className={`channel-option ${enabled ? "selected" : ""} ${channel.required ? "recommended" : ""}`} key={channel.key}><input type="checkbox" checked={enabled} onChange={() => setChannels((current) => ({ ...current, [channel.key]: !current[channel.key as keyof typeof current] }))} /><span className={`channel-icon ${channel.tone}`}><Icon size={16} /></span><span className="channel-copy"><strong>{channel.label}{channel.required && <em>Recommended</em>}</strong><small>{channel.detail}</small></span><span className="channel-check">{enabled ? <Check size={13} weight="bold" /> : null}</span></label>; })}</div><div className="sequence-preview"><span>Sequence preview</span><strong>{selectedChannelLabels}</strong><small>{qualificationGoal} · {callTiming}</small></div></div>
+          <div className="import-options"><div className="section-overline">Import defaults</div><div className="import-option-grid"><label><span>Import label <b>Required</b></span><input required value={sourceLabel} onChange={(event) => setSourceLabel(event.target.value)} placeholder="e.g. Meta September intake" /></label><label><span>Default owner</span><select value={defaultOwner} onChange={(event) => setDefaultOwner(event.target.value)}><option>Unassigned</option><option>Maya Chen</option><option>Jules Martin</option><option>Ravi Shah</option></select></label><label><span>Duplicate handling</span><select value={duplicatePolicy} onChange={(event) => setDuplicatePolicy(event.target.value)}><option>Flag for review</option><option>Skip likely duplicates</option><option>Import and link history</option></select></label><label><span>Consent handling</span><select value={consentPolicy} onChange={(event) => setConsentPolicy(event.target.value)}><option>Reject rows without consent</option><option>Import as contact-restricted</option></select></label></div></div>
+        </>}
+        {step === 2 && file && <>
+          <div className="import-card-heading"><div><div className="section-overline"><CheckCircle size={14} /> File received</div><h2>Map your columns</h2><p>Confirm how the spreadsheet headers map to lead fields. Required fields must be mapped before import.</p></div><button className="text-button" onClick={resetImport}>Choose another file</button></div>
+          <div className="selected-file"><div className="selected-file-icon"><FileText size={19} /></div><div><strong>{file.name}</strong><span>{fileSize} · {sourceLabel}</span></div><span className="file-ready"><CheckCircle size={14} /> Ready</span></div>
+          <div className="mapping-table"><div className="mapping-head"><span>Detected header</span><span>Lead field</span><span>Requirement</span></div>{[{ from: "full_name", to: "Full name", requirement: "Required" }, { from: "email", to: "Email address", requirement: "Email or phone" }, { from: "phone", to: "Phone number", requirement: "Email or phone" }, { from: "source", to: "Source label", requirement: "Required" }, { from: "consent_general", to: "General contact consent", requirement: "Required" }, { from: "course_interest", to: "Course interest", requirement: "Recommended" }].map((row) => <div className="mapping-row" key={row.from}><span className="mapping-source">{row.from}</span><select defaultValue={row.to}><option>{row.to}</option><option>Do not import</option><option>Custom field</option></select><span className={row.requirement === "Required" ? "mapping-required" : "mapping-optional"}>{row.requirement}</span></div>)}</div>
+          <div className="import-validation"><WarningCircle size={16} /><div><strong>We’ll flag rows, not silently change them.</strong><span>Likely duplicates are held for review. Missing contact data or consent will not enter an outreach-ready queue.</span></div></div>
+          <div className="import-footer-actions"><button className="button button-secondary" onClick={() => setStep(1)}>Back</button><button className="button button-primary" onClick={() => hasValidDefaults() && setStep(3)}>Continue to review <ArrowUpRight size={15} /></button></div>
+        </>}
+        {step === 3 && file && <>
+          <div className="import-card-heading"><div><div className="section-overline"><ShieldCheck size={14} /> Pre-import review</div><h2>Check before creating leads</h2><p>Review the validation outcome and defaults. No lead is created until you confirm the import.</p></div><button className="text-button" onClick={() => setStep(2)}>Edit mapping</button></div>
+          <div className="import-review-file"><FileText size={18} /><div><strong>{file.name}</strong><span>{fileSize} · {project} · {sourceLabel} · Owner: {defaultOwner}</span></div></div>
+          <div className="review-counts"><div className="review-count ready"><strong>22</strong><span>Ready to import</span></div><div className="review-count warning"><strong>02</strong><span>Possible duplicates</span></div><div className="review-count restricted"><strong>01</strong><span>Missing consent</span></div><div className="review-count total"><strong>25</strong><span>Rows scanned</span></div></div>
+          <div className="review-checks"><div><CheckCircle size={16} /><span>Required identity and contact columns mapped</span><b>Pass</b></div><div><CheckCircle size={16} /><span>Import label, project, and source attribution will be preserved</span><b>Pass</b></div><div><CheckCircle size={16} /><span>Qualification sequence: {selectedChannelLabels}</span><b>Ready</b></div><div><WarningCircle size={16} /><span>Duplicate policy: {duplicatePolicy.toLowerCase()}</span><b>Review 2</b></div><div><WarningCircle size={16} /><span>Consent policy: {consentPolicy.toLowerCase()}</span><b>Hold 1</b></div></div>
+          <div className="import-review-note"><Phone size={15} /><span>After import, leads enter <strong>New</strong> status and the automated call is scheduled for <strong>{callTiming.toLowerCase()}</strong>. Leads who confirm interest are handed to an advisor; unanswered or restricted leads follow the enabled fallbacks.</span></div>
+          <div className="import-footer-actions"><button className="button button-secondary" onClick={() => setStep(2)}>Back to mapping</button><button className="button button-primary" onClick={() => { showNotice("22 leads imported and qualification calls scheduled; 3 rows held for review."); resetImport(); }}>Import and start qualification <ArrowUpRight size={15} /></button></div>
+        </>}
+      </div>
+      <aside className="import-guide">
+        <div className="import-guide-heading"><div className="section-overline">Before you upload</div><h2>Prepare a clean, permissioned list.</h2></div>
+        <div className="import-guide-list"><div><span>01</span><p><strong>One lead per row.</strong> Keep headers in the first row and avoid merged cells, formulas, or multiple sheets.</p></div><div><span>02</span><p><strong>Include contact consent.</strong> Record the consent state and timestamp for the channels you plan to use.</p></div><div><span>03</span><p><strong>Keep source attribution.</strong> Add source, campaign, capture date, and any external reference ID where available.</p></div><div><span>04</span><p><strong>Expect duplicate review.</strong> Matching email, phone, applicant identity, and similar names are flagged; records are never merged automatically.</p></div></div>
+        <div className="required-fields"><div className="section-overline">Required columns</div><div className="required-field-row"><span>full_name</span><b>Required</b></div><div className="required-field-row"><span>email or phone</span><b>One required</b></div><div className="required-field-row"><span>source</span><b>Required</b></div><div className="required-field-row"><span>consent_general</span><b>Required</b></div><div className="required-field-row"><span>captured_at</span><b>Recommended</b></div></div>
+        <div className="import-channel-note"><div className="section-overline">Contact sequence</div><p><strong>Automated call first.</strong> WhatsApp, SMS, email, and advisor follow-up are available as consent-aware fallbacks. A lead stops when they confirm interest, opt out, or needs a human decision.</p></div>
+        <div className="import-security"><ShieldCheck size={16} /><span>Only permitted users can import into Aggregator — UK. Every file, row result, and assignment default is logged.</span></div>
+      </aside>
+    </section>
+  </>;
+}
+
+function SourceHealthView({ showNotice, setActiveNav }: { showNotice: (message: string) => void; setActiveNav: (value: string) => void }) {
+  const sources = [{ name: "Meta · September intake", type: "Paid social", status: "Healthy", volume: "42 leads", sync: "2 min ago", tone: "sage" }, { name: "Atlas partner referral", type: "Referral", status: "Healthy", volume: "18 leads", sync: "6 min ago", tone: "sage" }, { name: "Cape Town open day", type: "Event", status: "Needs review", volume: "7 leads", sync: "1h ago", tone: "gold" }, { name: "Organic course search", type: "Organic", status: "Healthy", volume: "21 leads", sync: "12 min ago", tone: "sage" }];
+  return <>
+    <WorkspaceIntro eyebrow="Operations / source health" title="Source health" description="Check that approved lead sources are connected, delivering usable payloads, and staying within the expected response window." action="Import a lead file" onAction={() => setActiveNav("Import leads")} />
+    <section className="mini-metrics"><MiniMetric label="Connected sources" value="04" detail="All approved" tone="sage" /><MiniMetric label="Last sync" value="2m" detail="Meta intake" tone="ink" /><MiniMetric label="Payload exceptions" value="03" detail="Needs review" tone="gold" /><MiniMetric label="Ingestion uptime" value="99.8%" detail="Last 30 days" tone="sage" /></section>
+    <section className="section-block source-panel"><div className="section-header compact"><div><div className="section-overline"><span className="live-line" /> Live connectors</div><h2>Approved lead sources</h2></div><button className="text-button" onClick={() => showNotice("Source health refresh requested.")}><Lightning size={14} /> Refresh now</button></div><div className="source-list">{sources.map((source) => <div className="source-row" key={source.name}><div className={`source-status ${source.tone}`}><span /></div><div className="source-main"><strong>{source.name}</strong><span>{source.type} · Last sync {source.sync}</span></div><strong>{source.volume}</strong><span className={`source-state ${source.tone}`}>{source.status}</span><button className="icon-button" onClick={() => showNotice(`${source.name} details opened.`)}><DotsThree size={19} /></button></div>)}</div><div className="source-note"><ShieldCheck size={15} /><span>Raw attribution is preserved and scoped to the Aggregator — UK workspace.</span></div></section>
+  </>;
+}
+
+function AuditLogView({ showNotice }: { showNotice: (message: string) => void }) {
+  const events = [
+    { action: "Lead moved to ready to convert", actor: "Ravi Shah", target: "Nadia Al-Khatib · LD-4788", time: "14 min ago", kind: "Status change" },
+    { action: "Assignment changed", actor: "Maya Chen", target: "Theo Mbatha · LD-4794", time: "29 min ago", kind: "Ownership" },
+    { action: "Course shortlist opened", actor: "Automated signal", target: "Malik Okafor · LD-4817", time: "27 min ago", kind: "Activity" },
+    { action: "Document uploaded", actor: "Ari Bennett", target: "Passport scan · LD-4771", time: "1h ago", kind: "Document" },
+    { action: "Three leads captured", actor: "Meta · September intake", target: "Source event batch 8841", time: "1h ago", kind: "Ingestion" },
+  ];
+  return <>
+    <WorkspaceIntro eyebrow="Operations / history" title="Audit log" description="A readable record of material lead changes, assignments, source events, and conversion decisions within this workspace." action="Export audit log" onAction={() => showNotice("Audit export prepared for the current scope.")} />
+    <section className="audit-toolbar"><label className="inbox-search"><MagnifyingGlass size={16} /><input placeholder="Search actor, lead ID or event" /></label><button className="filter-button" onClick={() => showNotice("Audit filters opened.")}><Funnel size={15} /> Event type</button><span className="privacy-note"><ShieldCheck size={13} /> Immutable event history</span></section>
+    <section className="section-block audit-panel"><div className="section-header compact"><div><div className="section-overline">27 October 2026</div><h2>Recent activity</h2></div><span className="report-period">Showing 5 of 248 events</span></div><div className="audit-list">{events.map((event) => <article className="audit-row" key={`${event.action}-${event.time}`}><div className="audit-icon"><CheckCircle size={16} weight="fill" /></div><div className="audit-copy"><strong>{event.action}</strong><span>{event.actor} · {event.target}</span></div><span className="audit-kind">{event.kind}</span><span className="audit-time">{event.time}</span><button className="icon-button" aria-label={`Open ${event.action}`} onClick={() => showNotice("Event details opened.")}><CaretRight size={16} /></button></article>)}</div><button className="button button-secondary audit-more" onClick={() => showNotice("Older audit events loaded.")}>Load older events</button></section>
+  </>;
 }
 
 function StatusBadge({ status }: { status: LeadStatus }) {
