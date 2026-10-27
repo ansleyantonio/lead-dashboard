@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowDown,
@@ -37,6 +37,7 @@ import {
   WarningCircle,
   X,
 } from "@phosphor-icons/react";
+import { authenticateDemoUser, clearDemoSession, getDemoSession, loadDemoLeads, persistDemoLeads, type DemoSession } from "./lib/demoDb";
 
 type LeadStatus = "New" | "Assigned" | "Contacted" | "Converted" | "Closed";
 type Lead = {
@@ -230,7 +231,46 @@ const workload = [
 const statusOptions: Array<LeadStatus | "All"> = ["All", "New", "Assigned", "Contacted", "Converted", "Closed"];
 
 function App() {
-  const [leads, setLeads] = useState(initialLeads);
+  const [session, setSession] = useState<DemoSession | null>(() => getDemoSession());
+  if (!session) return <LoginPage onLogin={setSession} />;
+  return <PortalApp session={session} onLogout={() => { clearDemoSession(); setSession(null); }} />;
+}
+
+function LoginPage({ onLogin }: { onLogin: (session: DemoSession) => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const session = authenticateDemoUser(email, password);
+    if (!session) {
+      setError("That email or password is not recognised. Use the demo account below.");
+      return;
+    }
+    setError("");
+    onLogin(session);
+  };
+
+  return <main className="auth-shell">
+    <section className="auth-card" aria-labelledby="login-title">
+      <div className="auth-brand"><div className="brand-mark">L</div><div><strong>Lead Operations</strong><span>Advisor workspace</span></div></div>
+      <div className="auth-copy"><span className="eyebrow">Aggregator — UK</span><h1 id="login-title">Welcome back.</h1><p>Sign in to work leads, follow up with prospects, and keep every qualification decision in one place.</p></div>
+      <form className="auth-form" onSubmit={submit}>
+        <label>Email address<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="you@leadops.demo" required /></label>
+        <label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" placeholder="Enter your password" required /></label>
+        {error && <div className="auth-error" role="alert"><WarningCircle size={16} />{error}</div>}
+        <button className="button button-primary auth-submit" type="submit">Sign in <ArrowUpRight size={16} /></button>
+      </form>
+      <div className="auth-demo"><div><span className="section-overline">Demo access</span><strong>Try the manager workspace</strong><p>maya@leadops.demo · demo1234</p></div><button className="button button-secondary small" type="button" onClick={() => { setEmail("maya@leadops.demo"); setPassword("demo1234"); setError(""); }}>Use demo account</button></div>
+      <p className="auth-footnote"><ShieldCheck size={14} /> Demo data stays in this browser and is not connected to a production account.</p>
+    </section>
+  </main>;
+}
+
+function PortalApp({ session, onLogout }: { session: DemoSession; onLogout: () => void }) {
+  const [leads, setLeads] = useState<Lead[]>(() => loadDemoLeads(initialLeads));
+  useEffect(() => { persistDemoLeads(leads); }, [leads]);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialLeads[0].id);
   const [activeNav, setActiveNav] = useState("Overview");
   const [activeStatus, setActiveStatus] = useState<LeadStatus | "All">("All");
@@ -239,6 +279,7 @@ function App() {
   const [dateRange, setDateRange] = useState("Today");
   const [notice, setNotice] = useState("");
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const sessionInitials = session.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
 
   const filteredLeads = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -362,13 +403,13 @@ function App() {
             </div>
             <span className="pulse-dot" />
           </div>
-          <button className="profile-card" onClick={() => showNotice("Profile settings are coming next.")}>
-            <div className="avatar avatar-clay">MC</div>
+          <button className="profile-card" onClick={onLogout} title="Sign out">
+            <div className="avatar avatar-clay">{sessionInitials}</div>
             <div>
-              <strong>Maya Chen</strong>
-              <span>Advisor Manager</span>
+              <strong>{session.name}</strong>
+              <span>{session.role}</span>
             </div>
-            <DotsThree size={18} />
+            <span className="profile-signout">Sign out</span>
           </button>
         </div>
       </aside>
@@ -387,7 +428,7 @@ function App() {
               <Bell size={19} />
               <span />
             </button>
-            <div className="avatar avatar-clay top-avatar">MC</div>
+            <div className="avatar avatar-clay top-avatar">{sessionInitials}</div>
           </div>
         </header>
 
