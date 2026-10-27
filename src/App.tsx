@@ -255,7 +255,7 @@ function LoginPage({ onLogin }: { onLogin: (session: DemoSession) => void }) {
   return <main className="auth-shell">
     <section className="auth-frame" aria-labelledby="login-title">
       <aside className="auth-visual">
-        <div className="auth-brand"><div className="brand-mark">L</div><div><strong>Lead Operations</strong><span>Advisor workspace</span></div></div>
+      <div className="auth-brand"><div className="brand-mark" aria-hidden="true"><span>R</span></div><div><strong>Relay</strong><span>Lead operations</span></div></div>
         <div className="auth-visual-copy"><span className="auth-kicker">Advisor operations</span><h1>Move every enquiry <em>forward.</em></h1><p>One focused workspace for the leads that need a decision, a call, or a clear next step.</p></div>
         <div className="auth-principles"><div><CheckCircle size={16} /><span><strong>Qualify with context</strong><small>Keep source, consent, and history together.</small></span></div><div><CheckCircle size={16} /><span><strong>Make the next move obvious</strong><small>Give every active lead a clear action.</small></span></div><div><CheckCircle size={16} /><span><strong>Carry ownership forward</strong><small>Protect the handoff from lead to application.</small></span></div></div>
         <div className="auth-visual-footer"><span><ShieldCheck size={15} /> Secure advisor workspace</span><span>Qualify · Assign · Convert</span></div>
@@ -344,10 +344,10 @@ function PortalApp({ session, onLogout }: { session: DemoSession; onLogout: () =
       <a className="skip-link" href="#main-content">Skip to main content</a>
       <aside className="sidebar">
         <div className="brand-lockup">
-          <div className="brand-mark">L</div>
+          <div className="brand-mark" aria-hidden="true"><span>R</span></div>
           <div>
-            <strong>Lead Operations</strong>
-            <span>Advisor workspace</span>
+            <strong>Relay</strong>
+            <span>Lead operations</span>
           </div>
         </div>
 
@@ -423,7 +423,7 @@ function PortalApp({ session, onLogout }: { session: DemoSession; onLogout: () =
 
       <main id="main-content" className="main-content">
         <header className="topbar">
-          <div className="mobile-brand"><div className="brand-mark">L</div><strong>Lead Operations</strong></div>
+          <div className="mobile-brand"><div className="brand-mark" aria-hidden="true"><span>R</span></div><strong>Relay</strong></div>
           <div className="breadcrumb"><span>Operations</span><CaretRight size={13} /><strong>{activeNav}</strong></div>
           <div className="topbar-actions">
             <label className="global-search">
