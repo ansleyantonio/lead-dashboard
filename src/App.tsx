@@ -290,6 +290,7 @@ function PortalApp({ session, onLogout }: { session: DemoSession; onLogout: () =
   const [dateRange, setDateRange] = useState("Today");
   const [notice, setNotice] = useState("");
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const sessionInitials = session.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
 
   const filteredLeads = useMemo(() => {
@@ -309,6 +310,12 @@ function PortalApp({ session, onLogout }: { session: DemoSession; onLogout: () =
   const showNotice = (message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(""), 3000);
+  };
+
+  const navigateTo = (label: string) => {
+    setActiveNav(label);
+    if (label === "Lead inbox") setActiveStatus("All");
+    setMobileNavOpen(false);
   };
 
   const updateLead = (leadId: string, patch: Partial<Lead>, message: string) => {
@@ -374,10 +381,7 @@ function PortalApp({ session, onLogout }: { session: DemoSession; onLogout: () =
                 <button
                   className={`nav-item ${active ? "active" : ""}`}
                   key={item.label}
-                  onClick={() => {
-                    setActiveNav(item.label);
-                    if (item.label === "Lead inbox") setActiveStatus("All");
-                  }}
+                  onClick={() => navigateTo(item.label)}
                 >
                   <Icon size={18} weight={active ? "fill" : "regular"} />
                   <span>{item.label}</span>
@@ -390,16 +394,16 @@ function PortalApp({ session, onLogout }: { session: DemoSession; onLogout: () =
 
         <div className="nav-group nav-group-secondary">
           <span className="nav-label">Operations</span>
-          <button className={`nav-item ${activeNav === "Source health" ? "active" : ""}`} onClick={() => setActiveNav("Source health")}>
+          <button className={`nav-item ${activeNav === "Source health" ? "active" : ""}`} onClick={() => navigateTo("Source health")}>
             <Lightning size={18} />
             <span>Source health</span>
             <span className="status-dot" />
           </button>
-          <button className={`nav-item ${activeNav === "Import leads" ? "active" : ""}`} onClick={() => setActiveNav("Import leads")}>
+          <button className={`nav-item ${activeNav === "Import leads" ? "active" : ""}`} onClick={() => navigateTo("Import leads")}>
             <UploadSimple size={18} />
             <span>Import leads</span>
           </button>
-          <button className={`nav-item ${activeNav === "Audit log" ? "active" : ""}`} onClick={() => setActiveNav("Audit log")}>
+          <button className={`nav-item ${activeNav === "Audit log" ? "active" : ""}`} onClick={() => navigateTo("Audit log")}>
             <ShieldCheck size={18} />
             <span>Audit log</span>
           </button>
@@ -425,9 +429,21 @@ function PortalApp({ session, onLogout }: { session: DemoSession; onLogout: () =
         </div>
       </aside>
 
+      <AnimatePresence>
+        {mobileNavOpen && <div className="mobile-nav-layer">
+          <motion.button className="mobile-nav-backdrop" aria-label="Close navigation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMobileNavOpen(false)} />
+          <motion.aside className="mobile-nav-drawer" role="dialog" aria-modal="true" aria-label="Relay navigation" initial={{ x: -320 }} animate={{ x: 0 }} exit={{ x: -320 }} transition={{ type: "spring", stiffness: 320, damping: 32 }}>
+            <div className="mobile-nav-header"><div className="auth-brand"><RelayMark /><div><strong>Relay</strong><span>Lead operations</span></div></div><button className="icon-button" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)}><X size={20} /></button></div>
+            <div className="mobile-nav-workspace"><span className="eyebrow">Workspace</span><strong>Aggregator — UK</strong></div>
+            <nav className="mobile-nav-list"><span className="nav-label">Workspace</span>{navItems.map((item) => { const Icon = item.icon; const active = activeNav === item.label; return <button className={`nav-item ${active ? "active" : ""}`} key={item.label} onClick={() => navigateTo(item.label)}><Icon size={19} weight={active ? "fill" : "regular"} /><span>{item.label}</span>{item.count && <em>{item.count}</em>}</button>; })}<span className="nav-label mobile-nav-section-label">Operations</span><button className={`nav-item ${activeNav === "Source health" ? "active" : ""}`} onClick={() => navigateTo("Source health")}><Lightning size={19} /><span>Source health</span><span className="status-dot" /></button><button className={`nav-item ${activeNav === "Import leads" ? "active" : ""}`} onClick={() => navigateTo("Import leads")}><UploadSimple size={19} /><span>Import leads</span></button><button className={`nav-item ${activeNav === "Audit log" ? "active" : ""}`} onClick={() => navigateTo("Audit log")}><ShieldCheck size={19} /><span>Audit log</span></button></nav>
+            <button className="mobile-nav-profile" onClick={onLogout}><div className="avatar avatar-clay">{sessionInitials}</div><span><strong>{session.name}</strong><small>{session.role}</small></span><span className="profile-signout">Sign out</span></button>
+          </motion.aside>
+        </div>}
+      </AnimatePresence>
+
       <main id="main-content" className="main-content">
         <header className="topbar">
-          <div className="mobile-brand"><RelayMark /><strong>Relay</strong></div>
+          <div className="mobile-topbar-left"><button className="mobile-menu-button icon-button" aria-label="Open navigation" aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen(true)}><Rows size={21} /></button><div className="mobile-brand"><RelayMark /><strong>Relay</strong></div></div>
           <div className="breadcrumb"><span>Operations</span><CaretRight size={13} /><strong>{activeNav}</strong></div>
           <div className="topbar-actions">
             <label className="global-search">
