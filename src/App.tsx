@@ -230,6 +230,10 @@ const workload = [
 
 const statusOptions: Array<LeadStatus | "All"> = ["All", "New", "Assigned", "Contacted", "Converted", "Closed"];
 
+function RelayMark() {
+  return <div className="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" role="presentation"><path d="M7 9h11a5 5 0 0 1 0 10H7V9Z" /><path d="M25 23H14a5 5 0 0 1 0-10h11v10Z" /><path d="m21 6 4 3-4 3M11 20l-4 3 4 3" /></svg></div>;
+}
+
 function App() {
   const [session, setSession] = useState<DemoSession | null>(() => getDemoSession());
   if (!session) return <LoginPage onLogin={setSession} />;
@@ -255,7 +259,7 @@ function LoginPage({ onLogin }: { onLogin: (session: DemoSession) => void }) {
   return <main className="auth-shell">
     <section className="auth-frame" aria-labelledby="login-title">
       <aside className="auth-visual">
-      <div className="auth-brand"><div className="brand-mark" aria-hidden="true"><span>R</span></div><div><strong>Relay</strong><span>Lead operations</span></div></div>
+      <div className="auth-brand"><RelayMark /><div><strong>Relay</strong><span>Lead operations</span></div></div>
         <div className="auth-visual-copy"><span className="auth-kicker">Advisor operations</span><h1>Move every enquiry <em>forward.</em></h1><p>One focused workspace for the leads that need a decision, a call, or a clear next step.</p></div>
         <div className="auth-principles"><div><CheckCircle size={16} /><span><strong>Qualify with context</strong><small>Keep source, consent, and history together.</small></span></div><div><CheckCircle size={16} /><span><strong>Make the next move obvious</strong><small>Give every active lead a clear action.</small></span></div><div><CheckCircle size={16} /><span><strong>Carry ownership forward</strong><small>Protect the handoff from lead to application.</small></span></div></div>
         <div className="auth-visual-footer"><span><ShieldCheck size={15} /> Secure advisor workspace</span><span>Qualify · Assign · Convert</span></div>
@@ -344,7 +348,7 @@ function PortalApp({ session, onLogout }: { session: DemoSession; onLogout: () =
       <a className="skip-link" href="#main-content">Skip to main content</a>
       <aside className="sidebar">
         <div className="brand-lockup">
-          <div className="brand-mark" aria-hidden="true"><span>R</span></div>
+          <RelayMark />
           <div>
             <strong>Relay</strong>
             <span>Lead operations</span>
@@ -423,7 +427,7 @@ function PortalApp({ session, onLogout }: { session: DemoSession; onLogout: () =
 
       <main id="main-content" className="main-content">
         <header className="topbar">
-          <div className="mobile-brand"><div className="brand-mark" aria-hidden="true"><span>R</span></div><strong>Relay</strong></div>
+          <div className="mobile-brand"><RelayMark /><strong>Relay</strong></div>
           <div className="breadcrumb"><span>Operations</span><CaretRight size={13} /><strong>{activeNav}</strong></div>
           <div className="topbar-actions">
             <label className="global-search">
